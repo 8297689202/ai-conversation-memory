@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quick Chat</title>
+  <style>
+    body{font-family:system-ui,Arial;padding:16px;max-width:720px;margin:auto}
+    textarea{width:100%;box-sizing:border-box;padding:8px;font-size:15px}
+    button{margin-top:8px;padding:8px 12px;font-size:15px;border-radius:8px}
+    #out{white-space:pre-wrap;margin-top:12px;padding:10px;border-radius:8px;background:#f6f6f6;min-height:80px}
+  </style>
+</head>
+<body>
+  <h3>Quick Chat</h3>
+  <textarea id="prompt" rows="5" placeholder="Type prompt..."></textarea>
+  <div>
+    <button id="send">Send</button>
+    <button id="clear" style="margin-left:8px">Clear</button>
+  </div>
+  <div id="out">Response will appear here</div>
+
+<script>
+async function callChat(prompt){
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({prompt})
+  });
+  const text = await res.text();
+  // try parse JSON; if not JSON show raw
+  try {
+    const data = JSON.parse(text);
+    // safe extraction: several providers/use cases differ slightly
+    let content = null;
+    // common OpenRouter shape
+    if (data?.choices?.[0]?.message?.content) content = data.choices[0].message.content;
+    // fallback: older/other shapes
+    else if (data?.choices?.[0]?.text) content = data.choices[0].text;
+    else if (data?.choices?.[0]?.message) content = JSON.stringify(data.choices[0].message);
+    else content = JSON.stringify(data, null, 2);
+    return content;
+  } catch(e){
+    return text;
+  }
+}
+
+document.getElementById('send').onclick = async () => {
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) return;
+  const out = document.getElementById('out');
+  out.textContent = 'Sending...';
+  try {
+    const reply = await callChat(prompt);
+    out.textContent = reply;
+  } catch (err) {
+    out.textContent = 'Error: ' + (err.message || String(err));
+  }
+};
+
+document.getElementById('clear').onclick = () => {
+  document.getElementById('prompt').value = '';
+  document.getElementById('out').textContent = 'Response will appear here';
+};
+</script>
+</body>
+</html>
