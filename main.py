@@ -195,6 +195,7 @@ def root():
 class PromptIn(BaseModel):
     prompt: str
     model: str = "z-ai/glm-4.5-air"
+    max_tokens: int = 3000
 
 @app.post("/api/chat")
 def chat(body: PromptIn):
@@ -218,7 +219,8 @@ def chat(body: PromptIn):
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": body.prompt}
-        ]
+        ],
+        "max_tokens": body.max_tokens
     }
 
     headers = {
