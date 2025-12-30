@@ -2,65 +2,371 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Quick Chat</title>
+  <title>Story Chat</title>
   <style>
-    body{font-family:system-ui,Arial;padding:16px;max-width:720px;margin:auto}
-    textarea{width:100%;box-sizing:border-box;padding:8px;font-size:15px}
-    button{margin-top:8px;padding:8px 12px;font-size:15px;border-radius:8px}
-    #out{white-space:pre-wrap;margin-top:12px;padding:10px;border-radius:8px;background:#f6f6f6;min-height:80px}
+    body {
+      font-family: system-ui, Arial;
+      padding: 16px;
+      max-width: 720px;
+      margin: auto;
+      background: #fafafa;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    h3 {
+      margin: 0;
+    }
+    
+    .session-info {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      font-size: 15px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      resize: vertical;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: #4a90e2;
+    }
+    
+    .button-group {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      padding: 10px 16px;
+      font-size: 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    #send {
+      background: #4a90e2;
+      color: white;
+      flex: 1;
+      min-width: 120px;
+    }
+    
+    #send:hover {
+      background: #357abd;
+    }
+    
+    #send:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    #clear {
+      background: #f0f0f0;
+      color: #333;
+    }
+    
+    #clear:hover {
+      background: #e0e0e0;
+    }
+    
+    #stats {
+      background: #fff3cd;
+      color: #856404;
+      font-size: 13px;
+      padding: 6px 12px;
+    }
+    
+    #stats:hover {
+      background: #ffe69c;
+    }
+    
+    #newSession {
+      background: #dc3545;
+      color: white;
+      font-size: 13px;
+      padding: 6px 12px;
+    }
+    
+    #newSession:hover {
+      background: #c82333;
+    }
+    
+    #out {
+      white-space: pre-wrap;
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 8px;
+      background: white;
+      border: 1px solid #ddd;
+      min-height: 100px;
+      line-height: 1.6;
+      font-size: 15px;
+    }
+    
+    .loading {
+      color: #4a90e2;
+      font-style: italic;
+    }
+    
+    .error {
+      color: #dc3545;
+      background: #f8d7da;
+      border-color: #f5c6cb;
+    }
+    
+    .stats-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      z-index: 1000;
+      max-width: 400px;
+      width: 90%;
+    }
+    
+    .stats-modal h4 {
+      margin-top: 0;
+    }
+    
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .close-modal {
+      margin-top: 16px;
+      width: 100%;
+      background: #6c757d;
+      color: white;
+    }
+    
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+    }
+    
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <h3>Quick Chat</h3>
-  <textarea id="prompt" rows="5" placeholder="Type prompt..."></textarea>
-  <div>
-    <button id="send">Send</button>
-    <button id="clear" style="margin-left:8px">Clear</button>
+  <div class="header">
+    <h3>📖 Story Chat</h3>
+    <div class="session-info" id="sessionInfo">Session: <span id="sessionId">loading...</span></div>
   </div>
-  <div id="out">Response will appear here</div>
+  
+  <textarea id="prompt" rows="5" placeholder="Type your story prompt or continue the story..."></textarea>
+  
+  <div class="button-group">
+    <button id="send">Send</button>
+    <button id="clear">Clear</button>
+    <button id="stats">Stats</button>
+    <button id="newSession">New Story</button>
+  </div>
+  
+  <div id="out">Response will appear here...</div>
+
+  <!-- Stats Modal -->
+  <div id="overlay" class="overlay hidden"></div>
+  <div id="statsModal" class="stats-modal hidden">
+    <h4>📊 Session Statistics</h4>
+    <div id="statsContent"></div>
+    <button class="close-modal" onclick="closeStatsModal()">Close</button>
+  </div>
 
 <script>
-async function callChat(prompt){
+// Session management
+let currentSession = localStorage.getItem('story_session_id') || generateSessionId();
+localStorage.setItem('story_session_id', currentSession);
+document.getElementById('sessionId').textContent = currentSession.slice(0, 8) + '...';
+
+function generateSessionId() {
+  return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// API call
+async function callChat(prompt) {
   const res = await fetch('/api/chat', {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({prompt})
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      prompt: prompt,
+      session_id: currentSession
+      // model and max_tokens will use defaults from backend
+    })
   });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: ${errorText}`);
+  }
+  
   const text = await res.text();
-  // try parse JSON; if not JSON show raw
+  
   try {
     const data = JSON.parse(text);
-    // safe extraction: several providers/use cases differ slightly
+    // Extract content from response
     let content = null;
-    // common OpenRouter shape
-    if (data?.choices?.[0]?.message?.content) content = data.choices[0].message.content;
-    // fallback: older/other shapes
-    else if (data?.choices?.[0]?.text) content = data.choices[0].text;
-    else if (data?.choices?.[0]?.message) content = JSON.stringify(data.choices[0].message);
-    else content = JSON.stringify(data, null, 2);
+    if (data?.choices?.[0]?.message?.content) {
+      content = data.choices[0].message.content;
+    } else if (data?.choices?.[0]?.text) {
+      content = data.choices[0].text;
+    } else {
+      content = JSON.stringify(data, null, 2);
+    }
     return content;
-  } catch(e){
+  } catch(e) {
     return text;
   }
 }
 
+// Get session stats
+async function getStats() {
+  try {
+    const res = await fetch(`/api/stats/${currentSession}`);
+    if (!res.ok) throw new Error('Failed to fetch stats');
+    return await res.json();
+  } catch(err) {
+    console.error('Stats error:', err);
+    return null;
+  }
+}
+
+// Show stats modal
+async function showStats() {
+  const stats = await getStats();
+  if (!stats) {
+    alert('Failed to load statistics');
+    return;
+  }
+  
+  const content = `
+    <div class="stats-row">
+      <strong>Session ID:</strong>
+      <span>${currentSession}</span>
+    </div>
+    <div class="stats-row">
+      <strong>Total Messages:</strong>
+      <span>${stats.total_messages}</span>
+    </div>
+    <div class="stats-row">
+      <strong>Cached Summaries:</strong>
+      <span>${stats.cached_summaries}</span>
+    </div>
+    <div class="stats-row">
+      <strong>Total Tokens:</strong>
+      <span>${stats.total_tokens.toLocaleString()}</span>
+    </div>
+    <div class="stats-row">
+      <strong>Estimated Cost:</strong>
+      <span>${stats.estimated_cost}</span>
+    </div>
+  `;
+  
+  document.getElementById('statsContent').innerHTML = content;
+  document.getElementById('overlay').classList.remove('hidden');
+  document.getElementById('statsModal').classList.remove('hidden');
+}
+
+function closeStatsModal() {
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('statsModal').classList.add('hidden');
+}
+
+// Start new session
+function startNewSession() {
+  if (!confirm('Start a new story? This will create a fresh session.')) {
+    return;
+  }
+  
+  currentSession = generateSessionId();
+  localStorage.setItem('story_session_id', currentSession);
+  document.getElementById('sessionId').textContent = currentSession.slice(0, 8) + '...';
+  document.getElementById('prompt').value = '';
+  document.getElementById('out').textContent = 'New session started! Type your first prompt...';
+  document.getElementById('out').classList.remove('error');
+}
+
+// Send button handler
 document.getElementById('send').onclick = async () => {
   const prompt = document.getElementById('prompt').value.trim();
-  if (!prompt) return;
+  if (!prompt) {
+    alert('Please enter a prompt');
+    return;
+  }
+  
   const out = document.getElementById('out');
-  out.textContent = 'Sending...';
+  const sendBtn = document.getElementById('send');
+  
+  out.textContent = 'Generating story...';
+  out.className = 'loading';
+  sendBtn.disabled = true;
+  
   try {
     const reply = await callChat(prompt);
     out.textContent = reply;
+    out.className = '';
+    
+    // Clear prompt after successful send
+    document.getElementById('prompt').value = '';
   } catch (err) {
     out.textContent = 'Error: ' + (err.message || String(err));
+    out.className = 'error';
+  } finally {
+    sendBtn.disabled = false;
   }
 };
 
+// Clear button handler
 document.getElementById('clear').onclick = () => {
   document.getElementById('prompt').value = '';
-  document.getElementById('out').textContent = 'Response will appear here';
+  document.getElementById('out').textContent = 'Response will appear here...';
+  document.getElementById('out').className = '';
 };
+
+// Stats button handler
+document.getElementById('stats').onclick = showStats;
+
+// New session button handler
+document.getElementById('newSession').onclick = startNewSession;
+
+// Close modal when clicking overlay
+document.getElementById('overlay').onclick = closeStatsModal;
+
+// Enter key to send (Ctrl+Enter or Cmd+Enter)
+document.getElementById('prompt').addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    document.getElementById('send').click();
+  }
+});
 </script>
 </body>
 </html>
