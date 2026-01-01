@@ -35,7 +35,6 @@ DB_NAME = "story_conversations.db"
 
 # Prompts
 STORY_SYSTEM_PROMPT = """
-You are an expert in story writing. write the stores according to the user.
 """
 
 SUMMARY_PROMPT = """Analyze this conversation and create a comprehensive story summary that captures:
