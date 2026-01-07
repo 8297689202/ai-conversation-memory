@@ -39,11 +39,11 @@ STORY_SYSTEM_PROMPT = """
 
 SUMMARY_PROMPT = """Analyze this conversation and create a comprehensive story summary that captures:
 
-1. Main characters and their current status
+1. Main characters and its character development and their current status
 2. Key plot developments and events
 3. Current setting and situation
 4. Important details and unresolved threads
 
-Keep it concise but informative. Format as flowing prose, not bullet points."""
+Keep it concise but dont lose any key information. Format as flowing prose, not bullet points."""
 
 COMPRESS_PROMPT = """Summarize the following story segment concisely while preserving key plot points, character actions, and important details. Keep it under 200 words:"""
