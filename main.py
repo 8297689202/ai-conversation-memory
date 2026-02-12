@@ -8,6 +8,7 @@ from config import MODEL_CONFIG, MIN_REQUEST_INTERVAL
 from database import init_database, store_message_with_usage, get_session_stats, delete_session, count_messages, get_cached_summary,estimate_tokens,get_all_sessions
 from context import build_context, generate_summary_incremental
 from llm_utils import call_llm
+import os
 
 app = FastAPI()
 
