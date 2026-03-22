@@ -7,7 +7,8 @@ from database import (
     get_cached_summary,
     get_latest_cached_summary,
     cache_summary,
-    estimate_tokens
+    estimate_tokens,
+    get_story_context
 )
 from llm_utils import generate_summary, compress_message
 from config import (
@@ -83,10 +84,16 @@ def build_context(session_id: str, current_prompt: str) -> List[Dict]:
     if total_messages <= RECENT_MESSAGE_COUNT:
         print(f"✅ Short conversation, sending all {total_messages} messages")
         messages = get_all_messages(session_id)
-        
+
         # Compress any long messages
         messages = [compress_if_needed(msg) for msg in messages]
-        
+
+        # Prepend system prompt with story if available
+        story = get_story_context(session_id)
+        if story:
+            story_section = f"\n\nOriginal story reference:\n{story}"
+            messages.insert(0, {"role": "system", "content": f"{STORY_SYSTEM_PROMPT}{story_section}"})
+
         return messages
     
     # PHASE 2: Long conversations - summarize old, keep recent
@@ -111,8 +118,10 @@ def build_context(session_id: str, current_prompt: str) -> List[Dict]:
     recent_messages = [compress_if_needed(msg) for msg in recent_messages]
     
     # Build final context
+    story = get_story_context(session_id)
+    story_section = f"\n\nOriginal story reference:\n{story}" if story else ""
     context = [
-        {"role": "system", "content": f"{STORY_SYSTEM_PROMPT}\n\nStory so far: {summary}"}
+        {"role": "system", "content": f"{STORY_SYSTEM_PROMPT}{story_section}\n\nStory so far: {summary}"}
     ]
     context.extend(recent_messages)
     

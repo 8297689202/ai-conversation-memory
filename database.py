@@ -33,10 +33,19 @@ def init_database():
         )
     ''')
     
+    # Story context table - stores pinned story per session, never compressed
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS story_context (
+            session_id TEXT PRIMARY KEY,
+            story_text TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     # Create indexes
-    cursor.execute('''CREATE INDEX IF NOT EXISTS idx_session_timestamp 
+    cursor.execute('''CREATE INDEX IF NOT EXISTS idx_session_timestamp
                      ON messages(session_id, timestamp DESC)''')
-    cursor.execute('''CREATE INDEX IF NOT EXISTS idx_summary_session 
+    cursor.execute('''CREATE INDEX IF NOT EXISTS idx_summary_session
                      ON summaries(session_id, messages_covered DESC)''')
     
     conn.commit()
@@ -230,6 +239,28 @@ def delete_session(session_id: str) -> int:
     conn.close()
     
     return messages_deleted
+
+def save_story_context(session_id: str, story_text: str):
+    """Save (or replace) the pinned story for a session"""
+    conn = sqlite3.connect(DB_NAME, timeout=30.0)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT OR REPLACE INTO story_context (session_id, story_text)
+        VALUES (?, ?)
+    ''', (session_id, story_text))
+    conn.commit()
+    conn.close()
+
+
+def get_story_context(session_id: str) -> Optional[str]:
+    """Get the pinned story for a session"""
+    conn = sqlite3.connect(DB_NAME, timeout=30.0)
+    cursor = conn.cursor()
+    cursor.execute('SELECT story_text FROM story_context WHERE session_id = ?', (session_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else None
+
 
 def get_all_sessions() -> List[Dict]:
     """Get all unique sessions with their message counts and last activity"""

@@ -1,11 +1,11 @@
 import time
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 import json
 import uvicorn
 from config import MODEL_CONFIG, MIN_REQUEST_INTERVAL
-from database import init_database, store_message_with_usage, get_session_stats, delete_session, count_messages, get_cached_summary,estimate_tokens,get_all_sessions
+from database import init_database, store_message_with_usage, get_session_stats, delete_session, count_messages, get_cached_summary, estimate_tokens, get_all_sessions, save_story_context
 from context import build_context, generate_summary_incremental
 from llm_utils import call_llm
 import os
@@ -156,6 +156,17 @@ def get_stats(session_id: str):
             "total": f"${total_cost:.6f}"
         }
     }
+
+
+class StoryIn(BaseModel):
+    story: str
+
+
+@app.post("/api/set-story/{session_id}")
+def set_story(session_id: str, story: str = Body(..., media_type="text/plain")):
+    """Pin a story to a session — injected into every request, never compressed"""
+    save_story_context(session_id, story)
+    return {"session_id": session_id, "story_tokens": estimate_tokens(story)}
 
 
 @app.delete("/api/session/{session_id}")
